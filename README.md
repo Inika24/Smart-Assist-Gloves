@@ -1,226 +1,178 @@
-#include <TinyGPS++.h>
-#include <SoftwareSerial.h>
-#include <pcmConfig.h>
-#include <pcmRF.h>
-#include <SD.h>   // need to include the SD library
-#define SD_ChipSelectPin 10   //using digital pin 4 on arduino nano 328
-#include <TMRpcm.h>   //also need to include this library...
-#define trigPin1 6
-#define echoPin1 7
-#define motor1 8
-#define buzzer A0
-#define button A1
+\# IoT-Based Smart Assistance Gloves for Disabled People
 
-long duration1;
-int distance1;
 
-float gpslat;
-float gpslon;
 
-TinyGPSPlus gps;
-SoftwareSerial gsmSerial(2,3); //SIM800L Tx & Rx is connected to Arduino #3 & #2
-SoftwareSerial gpsSerial(4,5); //gps Tx & Rx is connected to Arduino #5 & #4
-TMRpcm tmrpcm;   // create an object for use in this sketch
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600); // sets the serial port to 9600
-  gsmSerial.begin(9600); // set the mySerial port to 9600
-  gpsSerial.begin(9600);  // set the gpsSerial port to 9600
-  
-  pinMode(trigPin1,OUTPUT); // Sets the trigPin as an Output
-  pinMode(echoPin1,INPUT); // Sets the echoPin as an Input
-  pinMode(buzzer,OUTPUT);
-  digitalWrite(buzzer,HIGH);
-  pinMode(motor1,OUTPUT);
-  pinMode(button,INPUT_PULLUP);
+The \*\*IoT-Based Smart Assistance Gloves\*\* is an innovative wearable technology designed to enhance \*\*communication and independence\*\* for individuals with physical disabilities, particularly those with speech, hearing, or mobility impairments. The glove interprets hand gestures and translates them into \*\*speech, text, or smart device commands\*\*, bridging communication gaps and empowering users.
 
-  tmrpcm.speakerPin = 9;   //11 on Mega, 9 on Uno, Nano, etc
 
-  Serial.begin(9600);
-  if (!SD.begin(SD_ChipSelectPin)) { // see if the card is present and can be initialized:
-   Serial.println("SD fail"); 
-   return;   // don't do anything more if not
-  }else{
-   Serial.println("SD read");
-  }
 
-  Serial.println("Initializing...");
-  delay(10000);
-  gsmSerial.println("AT"); //Once the handshake test is successful, it will back to OK
-  updateSerial();
-  gsmSerial.println("AT+CSQ"); //Signal quality test, value range is 0-31 , 31 is the best
-  updateSerial();
-  gsmSerial.println("AT+CCID"); //Read SIM information to confirm whether the SIM is plugged
-  updateSerial();
-  gsmSerial.println("AT+CREG?"); //Check whether it has registered in the network
-  updateSerial();
+---
 
-  
-}
 
-void updateSerial(){
-  delay(500);
-  while(Serial.available()) 
-  {
-    gsmSerial.write(Serial.read());//Forward what Serial received to Software Serial Port
-  }
-  while(gsmSerial.available()) 
-  {
-    Serial.write(gsmSerial.read());//Forward what Software Serial received to Serial Port
-  }
-  delay(100);
-}
 
-void loop() {
-  obstacleDetect();
-  emergencyCheck();
-  // This sketch displays information every time a new sentence is correctly encoded.
-  while (gpsSerial.available() > 0)
-  {
-    if (gps.encode(gpsSerial.read()))
-    {
-      displayInfo();
-    }
-  }
-  delay(100);
-  
-  // If 5000 milliseconds pass and there are no characters coming in
-  // over the software serial port, show a "No GPS detected" error
-  if (millis() > 5000 && gps.charsProcessed() < 10)
-  {
-    Serial.println("No GPS detected, retrying...");
-    return;  // Continue execution instead of halting
-  } 
-}
+\## \*\*1. System Environment\*\*
 
-void displayInfo(){
-  if (gps.location.isValid())
-  {
-    Serial.print("Latitude: ");
-    gpslat = gps.location.lat();
-    Serial.println(gpslat, 6);
-    Serial.print("Longitude: ");
-    gpslon = gps.location.lng();
-    Serial.println(gpslon, 6);
-    Serial.print("Altitude: ");
-    Serial.println(gps.altitude.meters());
-  }
-  else
-  {
-    Serial.println("Location: Not Available");
-  }
-  
-  Serial.print("Date: ");
-  if (gps.date.isValid())
-  {
-    Serial.print(gps.date.month());
-    Serial.print("/");
-    Serial.print(gps.date.day());
-    Serial.print("/");
-    Serial.println(gps.date.year());
-  }
-  else
-  {
-    Serial.println("Not Available");
-  }
 
-  Serial.print("Time: ");
-  if (gps.time.isValid())
-  {
-    if (gps.time.hour() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.hour());
-    Serial.print(":");
-    if (gps.time.minute() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.minute());
-    Serial.print(":");
-    if (gps.time.second() < 10) Serial.print(F("0"));
-    Serial.print(gps.time.second());
-    Serial.print(".");
-    if (gps.time.centisecond() < 10) Serial.print(F("0"));
-    Serial.println(gps.time.centisecond());
-  }
-  else
-  {
-    Serial.println("Not Available");
-  }
-  Serial.println();
-  Serial.println();
-}
 
-void moveright(){
-  noInterrupts();
-  // put your main code here, to run repeatedly:
-  digitalWrite(trigPin1, LOW);// Clears the trigPin
-  delayMicroseconds(5);
-  digitalWrite(trigPin1, HIGH);// Sets the trigPin on HIGH state for 10 micro seconds
-  delayMicroseconds(12);
-  digitalWrite(trigPin1, LOW);
-  duration1 = pulseIn(echoPin1, HIGH);// Reads the echoPin, returns the sound wave travel time in microseconds
-  distance1= duration1*0.034/2;//  distance= (Time x Speed of Sound in Air (340 m/s))/2
-  interrupts();
-  Serial.print("ULT:00002:cm1: ");
-  Serial.println(distance1);
-  delay(100);
-  if(distance1<=15)
-  {
-    //digitalWrite(buzzer,LOW);
-    digitalWrite(motor1,HIGH);
-    delay(100);
-    tmrpcm.play("obstacle.wav");
-    while (tmrpcm.isPlaying()) {
-      delay(100);
-    }
-  }
-  if(distance1>=15)
-  {
-    //digitalWrite(buzzer,HIGH);
-    digitalWrite(motor1,LOW);
-  }
-}
+\### \*\*Hardware Requirements\*\*
 
-void emergencyCheck(){
-  int button_state = digitalRead(button);
-  if(button_state == LOW)
-  { 
-    Serial.println("button pressed");
-    delay(1000);
-    tmrpcm.play("panic.wav");
-    while (tmrpcm.isPlaying()) {
-      delay(100);
-    }
-    makeCall();
-    sendSMS();    
-  }
-}
 
-void sendSMS()
-{
-  Serial.println("Sending SMS..."); 
-  gsmSerial.println("AT"); //Once the handshake test is successful, it will back to OK
-  updateSerial();
-  gsmSerial.println("AT+CMGF=1"); // Configuring TEXT mode
-  updateSerial();
-  gsmSerial.println("AT+CMGS=\"+9196002177730\"");//change ZZ with country code and xxxxxxxxxxx with phone number to sms
-  updateSerial();
-  gsmSerial.println("Emergency Help Needed at:"); //text content
-  gsmSerial.print("https://www.google.com/maps/?q=");
-  gsmSerial.print(gpslat, 6);
-  gsmSerial.print(",");
-  gsmSerial.print(gpslon, 6);
-  updateSerial();
-  gsmSerial.write(26);
-  delay(1000);
-}
 
-// Make a call function
-void makeCall() {
-  Serial.println("Making Call...");
-  gsmSerial.println("AT"); //Once the handshake test is successful, i t will back to OK
-  updateSerial();
-  gsmSerial.println("ATD+ +919600217773;"); //  change ZZ with country code and xxxxxxxxxxx with phone number to dial
-  updateSerial();
-  delay(30000); // wait for 20 seconds...
-  gsmSerial.println("ATH"); //hang up
-  updateSerial();
-  delay(1000);
-}
+\*\*1. Microcontroller \& Processing Units\*\*  
+
+\- NodeMCU ESP8266 Board ×2  
+
+\- NodeMCU ESP8266 USB Cable ×1  
+
+
+
+\*\*2. Sensors \& Input Devices\*\*  
+
+\- Flex Sensors ×5  
+
+
+
+\*\*3. Display \& Audio Output\*\*  
+
+\- I2C 16×2 LCD Display ×1  
+
+\- SD Card Reader Module ×1  
+
+\- LM386 Audio Amplifier Module ×1  
+
+\- 8 Ohm 1W Speaker ×1  
+
+
+
+\*\*4. Power Components\*\*  
+
+\- 3.7V 2600mAh Lithium-ion Battery ×1  
+
+\- Single Battery Holder ×1  
+
+\- TP4051 Battery Charging Module ×1  
+
+\- Multi-output Power Supply Module ×1  
+
+\- 12V 2A Power Adapter ×1  
+
+
+
+\*\*5. Circuit \& Connectivity Components\*\*  
+
+\- 170-point Breadboard ×1  
+
+\- 10k Ohm Resistors ×10  
+
+\- Jumper Wires (Male-Male, Male-Female, Female-Female) ×20 each  
+
+\- Ribbon Cable – 1 meter  
+
+
+
+---
+
+
+
+\### \*\*Software Requirements\*\*
+
+
+
+\*\*1. Programming \& Development\*\*  
+
+\- Arduino IDE – For coding and uploading firmware to ESP8266  
+
+\- Embedded C/C++ – Programming language for hardware control  
+
+\- ESP8266WiFi \& IoT Libraries – Required for NodeMCU communication  
+
+
+
+\*\*2. Communication \& IoT Integration\*\*  
+
+\- Blynk / Firebase (Optional) – For IoT-based monitoring and control  
+
+\- MQTT Protocol (Optional) – If using cloud-based IoT communication  
+
+
+
+\*\*3. Debugging \& Monitoring\*\*  
+
+\- Arduino Serial Monitor – For testing sensor data  
+
+\- Putty / Termite – Alternative serial communication tools  
+
+
+
+---
+
+
+
+\## \*\*2. Features\*\*
+
+
+
+\- Gesture recognition using \*\*flex sensors\*\* and \*\*accelerometer/gyroscope\*\*.  
+
+\- Real-time processing with \*\*Arduino/ESP8266 microcontroller\*\*.  
+
+\- Wireless communication via \*\*Bluetooth or Wi-Fi\*\*.  
+
+\- Haptic feedback for better user interaction.  
+
+\- Cloud integration for storing frequently used gestures.  
+
+\- AI \& Machine Learning for personalized gesture learning.  
+
+
+
+---
+
+
+
+\## \*\*3. Images \& Prototype\*\*
+
+
+
+!\[Circuit Diagram](images/circuit.jpg)  
+
+!\[Sensor Setup](images/sensor.jpg)  
+
+!\[Glove Prototype](images/circuitt.jpg)  
+
+
+
+> Make sure your images are in the `images` folder of your repository.
+
+
+
+---
+
+
+
+\## \*\*4. Future Scope\*\*
+
+
+
+\- Brainwave integration for thought-based commands.  
+
+\- Biometric authentication for personalized security.  
+
+\- Advanced AI gesture prediction for faster and accurate responses.  
+
+
+
+---
+
+
+
+\## \*\*5. Impact\*\*
+
+
+
+This project provides an \*\*affordable and intelligent solution\*\* for disabled individuals, enabling \*\*real-time communication and seamless interaction\*\* with their environment. By combining \*\*IoT, AI, and wearable technology\*\*, the smart glove represents a significant advancement in assistive technology.
+
+
+
+
+
