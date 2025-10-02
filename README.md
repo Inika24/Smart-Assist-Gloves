@@ -134,15 +134,11 @@ The \*\*IoT-Based Smart Assistance Gloves\*\* is an innovative wearable technolo
 
 
 
-!\[Circuit Diagram](images/circuit.jpg)  
+!\[Circuit Diagram](images/circuit.jpg)
 
-!\[Sensor Setup](images/sensor.jpg)  
+!\[Glove Prototype](images/circuitt.jpg)
 
-!\[Glove Prototype](images/circuitt.jpg)  
-
-
-
-> Make sure your images are in the `images` folder of your repository.
+!\[Sensor Setup](images/sensorr.jpg)
 
 
 
